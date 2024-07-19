@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Kopadi"
 include(":sample")
- 
+include(":annotations")
