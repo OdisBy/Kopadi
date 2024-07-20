@@ -14,6 +14,7 @@ import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.PropertySpec
 import org.kodein.di.DI
+import java.util.Locale
 import javax.inject.Inject
 
 class CodeGenerator(
@@ -21,7 +22,16 @@ class CodeGenerator(
     private val logger: KSPLogger
 ) : SymbolProcessor {
 
+    private val modulesByPackage = mutableMapOf<String, MutableList<String>>()
+    private val modulesCreated = mutableSetOf<String>()
+
+    private var isProcessed = false
+
     override fun process(resolver: Resolver): List<KSAnnotated> {
+
+        if (isProcessed) return emptyList()
+        isProcessed = true
+
         val symbols = resolver.getSymbolsWithAnnotation(Inject::class.qualifiedName.orEmpty())
             .filterIsInstance<KSFunctionDeclaration>()
             .filter { it.isConstructor() }
@@ -33,6 +43,11 @@ class CodeGenerator(
                 generateForClass(classDeclaration, symbol)
             }
         }
+
+        generateForPackages(modulesByPackage)
+
+        generateAllModules(modulesCreated)
+
         return emptyList()
     }
 
@@ -45,7 +60,7 @@ class CodeGenerator(
         val constructorParameters = constructor.parameters
         val packageName = classDeclaration.packageName.asString()
         val classNameModule = "${className}_Module"
-
+        modulesByPackage.getOrPut(packageName) { mutableListOf() }.add(classNameModule)
 
         val hasConstructorParameters = constructorParameters.isNotEmpty()
 
@@ -96,14 +111,102 @@ class CodeGenerator(
             )
             .build()
 
-        codeGenerator.createNewFile(
-            Dependencies(false, classDeclaration.containingFile!!),
-            packageName,
-            classNameModule
-        ).use { outputStream ->
-            outputStream.writer().use { writer ->
-                fileSpec.writeTo(writer)
+        writeFile(packageName, classNameModule, fileSpec)
+    }
+
+    private fun generateForPackages(modulesByPackage: Map<String, List<String>>) {
+        modulesByPackage.forEach { (packageName, moduleNames) ->
+            val lastPackagePart = packageName.substringAfterLast('.')
+                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            val packageModuleName = "${lastPackagePart}_Modules"
+
+            val fileSpecBuilder = FileSpec.builder(packageName, packageModuleName)
+                .addFileComment("Generated code by Kopadi. Do not modify.", arrayOf<Any>())
+                .addImport("org.kodein.di", "DI")
+
+            moduleNames.forEach { moduleName ->
+                fileSpecBuilder.addImport(packageName, moduleName)
             }
+
+            val moduleCode = buildString {
+                appendLine("DI.Module(\nprefix = \"$packageName\",\nname = \"$packageName.$packageModuleName\"\n) {")
+                moduleNames.forEach { moduleName ->
+                    appendLine("\timport(${moduleName})")
+                }
+                appendLine("}")
+            }
+
+            fileSpecBuilder.addProperty(
+                PropertySpec.builder(packageModuleName, DI.Module::class)
+                    .initializer(moduleCode)
+                    .build()
+            )
+
+            modulesCreated.add("$packageName.$packageModuleName")
+
+            val fileSpec = fileSpecBuilder.build()
+
+            writeFile(packageName, packageModuleName, fileSpec)
+        }
+    }
+
+
+
+    private fun generateAllModules(modulesCreated: MutableSet<String>) {
+        val fileSpecBuilder = FileSpec.builder("com.odisby.kopadi.sample.ui.test", "allModules")
+            .addFileComment("Generated code by Kopadi. Do not modify.", arrayOf<Any>())
+            .addImport("org.kodein.di", "DI")
+
+        modulesCreated.forEach { moduleName ->
+            fileSpecBuilder.addImport("", moduleName)
+        }
+
+        val moduleCode = buildString {
+            appendLine("DI.Module(\nprefix = \"com.odisby.kopadi.sample.ui.test\",\nname = \"com.odisby.kopadi.sample.ui.test.allModules\"\n) {")
+            modulesCreated.forEach { moduleName ->
+                appendLine("\timport(${moduleName})")
+            }
+            appendLine("}")
+        }
+
+        fileSpecBuilder.addProperty(
+            PropertySpec.builder("allModules", DI.Module::class)
+                .initializer(moduleCode)
+                .build()
+        )
+
+        val fileSpec = fileSpecBuilder.build()
+
+        writeFile("com.odisby.kopadi.sample.ui.test", "allModules", fileSpec)
+    }
+
+
+    private fun writeFile(packageName: String, fileName: String, fileSpec: FileSpec) {
+        try {
+            val filePath = "$packageName.$fileName"
+            if (codeGenerator.generatedFileExists(filePath)) {
+                logger.warn("File already exists: $filePath")
+                return
+            }
+            codeGenerator.createNewFile(
+                Dependencies(false),
+                packageName,
+                fileName
+            ).use { outputStream ->
+                outputStream.writer().use { writer ->
+                    fileSpec.writeTo(writer)
+                }
+            }
+        } catch (e: Exception) {
+            logger.error("Error creating file: $fileName in package: $packageName with exception $e")
+        }
+    }
+
+    private fun CodeGenerator.generatedFileExists(filePath: String): Boolean {
+        return try {
+            this::class.java.classLoader.getResource(filePath.replace('.', '/') + ".kt") != null
+        } catch (e: Exception) {
+            false
         }
     }
 }
