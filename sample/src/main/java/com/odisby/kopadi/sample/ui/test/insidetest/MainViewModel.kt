@@ -2,6 +2,7 @@ package com.odisby.kopadi.sample.ui.test.insidetest
 
 import android.util.Log
 import com.odisby.kopadi.sample.BaseViewModel
+import com.odisby.kopadi.sample.ui.test.repository.SomeGoodRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -9,14 +10,13 @@ import javax.inject.Singleton
 class TestingInject @Inject constructor()
 
 class MainViewModel @Inject constructor(
-    private val testingInject: TestingInject,
-    private val testingInject2: TestingInject
+    private val goodRepository: SomeGoodRepository
 ) : BaseViewModel() {
     fun displayInjectedValue(): String {
         return "asas"
     }
 
     init {
-        Log.d("Testing", "asas")
+        Log.d("Ruliam", goodRepository.getSomething())
     }
 }

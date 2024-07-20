@@ -154,7 +154,7 @@ class CodeGenerator(
 
     private fun generateAllModules(modulesCreated: MutableSet<String>) {
         val fileSpecBuilder = FileSpec.builder("com.odisby.kopadi.sample.ui.test", "allModules")
-            .addFileComment("Generated code by Kopadi. Do not modify.", arrayOf<Any>())
+            .addFileComment("Generated code by Kopadi. Do not modify. ", arrayOf<Any>())
             .addImport("org.kodein.di", "DI")
 
         modulesCreated.forEach { moduleName ->
