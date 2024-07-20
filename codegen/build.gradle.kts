@@ -12,6 +12,8 @@ dependencies {
     implementation(project(":annotations"))
     implementation(libs.symbol.processing.api)
 
+    implementation(libs.kodein.di)
+
     implementation(libs.kotlinpoet)
     implementation(libs.kotlinpoet.ksp)
 }

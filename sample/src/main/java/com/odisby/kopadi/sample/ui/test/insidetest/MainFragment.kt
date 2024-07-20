@@ -1,4 +1,4 @@
-package com.odisby.kopadi.sample.ui
+package com.odisby.kopadi.sample.ui.test.insidetest
 
 import android.os.Bundle
 import android.view.LayoutInflater

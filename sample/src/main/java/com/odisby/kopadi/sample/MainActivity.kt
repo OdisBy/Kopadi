@@ -3,7 +3,7 @@ package com.odisby.kopadi.sample
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import com.odisby.kopadi.sample.ui.MainFragment
+import com.odisby.kopadi.sample.ui.test.insidetest.MainFragment
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
