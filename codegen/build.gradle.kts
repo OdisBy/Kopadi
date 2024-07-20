@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.jetbrains.kotlin.jvm)
     alias(libs.plugins.ksp)
 }
 
@@ -9,6 +9,9 @@ java {
 }
 
 dependencies {
-    api(group = "javax.inject", name = "javax.inject", version = "1")
+    implementation(project(":annotations"))
     implementation(libs.symbol.processing.api)
+
+    implementation(libs.kotlinpoet)
+    implementation(libs.kotlinpoet.ksp)
 }
