@@ -10,7 +10,7 @@ import javax.inject.Singleton
 class TestingInject @Inject constructor()
 
 class MainViewModel @Inject constructor(
-    private val goodRepository: SomeGoodRepository
+    goodRepository: SomeGoodRepository
 ) : BaseViewModel() {
     fun displayInjectedValue(): String {
         return "asas"

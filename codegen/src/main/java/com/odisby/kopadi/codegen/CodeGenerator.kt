@@ -13,6 +13,7 @@ import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.ksp.writeTo
 import org.kodein.di.DI
 import java.util.Locale
 import javax.inject.Inject
@@ -28,14 +29,16 @@ class CodeGenerator(
     private var isProcessed = false
 
     override fun process(resolver: Resolver): List<KSAnnotated> {
-
-        if (isProcessed) return emptyList()
-        isProcessed = true
+//
+//        if (isProcessed) return emptyList()
+//        isProcessed = true
 
         val symbols = resolver.getSymbolsWithAnnotation(Inject::class.qualifiedName.orEmpty())
             .filterIsInstance<KSFunctionDeclaration>()
             .filter { it.isConstructor() }
             .filter(KSNode::validate)
+
+        if (!symbols.iterator().hasNext()) return emptyList()
 
         symbols.forEach { symbol ->
             if (symbol.parentDeclaration is KSClassDeclaration) {
@@ -100,7 +103,7 @@ class CodeGenerator(
         }
 
         val fileSpec = FileSpec.builder(packageName, classNameModule)
-            .addFileComment("Generated code by Kopadi. Do not modify.", arrayOf<Any>())
+            .addFileComment("Generated code by Kopadi. Do not modify. ", arrayOf<Any>())
             .addImport("org.kodein.di", "bind")
             .addImport("org.kodein.di", "provider")
             .addImport("org.kodein.di", "instance")
@@ -111,7 +114,8 @@ class CodeGenerator(
             )
             .build()
 
-        writeFile(packageName, classNameModule, fileSpec)
+//        writeFile(packageName, classNameModule, fileSpec)
+        fileSpec.writeTo(codeGenerator, Dependencies(true, classDeclaration.containingFile!!))
     }
 
     private fun generateForPackages(modulesByPackage: Map<String, List<String>>) {
@@ -146,10 +150,10 @@ class CodeGenerator(
 
             val fileSpec = fileSpecBuilder.build()
 
-            writeFile(packageName, packageModuleName, fileSpec)
+            fileSpec.writeTo(codeGenerator, Dependencies(true))
+//            writeFile(packageName, packageModuleName, fileSpec)
         }
     }
-
 
 
     private fun generateAllModules(modulesCreated: MutableSet<String>) {
@@ -177,29 +181,8 @@ class CodeGenerator(
 
         val fileSpec = fileSpecBuilder.build()
 
-        writeFile("com.odisby.kopadi.sample.ui.test", "allModules", fileSpec)
-    }
-
-
-    private fun writeFile(packageName: String, fileName: String, fileSpec: FileSpec) {
-        try {
-            val filePath = "$packageName.$fileName"
-            if (codeGenerator.generatedFileExists(filePath)) {
-                logger.warn("File already exists: $filePath")
-                return
-            }
-            codeGenerator.createNewFile(
-                Dependencies(false),
-                packageName,
-                fileName
-            ).use { outputStream ->
-                outputStream.writer().use { writer ->
-                    fileSpec.writeTo(writer)
-                }
-            }
-        } catch (e: Exception) {
-            logger.error("Error creating file: $fileName in package: $packageName with exception $e")
-        }
+//        writeFile("com.odisby.kopadi.sample.ui.test", "allModules", fileSpec)
+        fileSpec.writeTo(codeGenerator, Dependencies(true))
     }
 
     private fun CodeGenerator.generatedFileExists(filePath: String): Boolean {
